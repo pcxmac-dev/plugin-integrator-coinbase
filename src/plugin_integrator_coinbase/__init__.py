@@ -1,11 +1,16 @@
 """Coinbase Exchange (coinbase.com) for Liminal: crypto minute and day bars from 2015 and its public trade
 stream, no key; the reference exchange for crypto (the app's composite model).
 
-A Liminal plugin released on its own, a class on plugin API 2.0 (liminal_libs.sources.archive:
+A Liminal plugin released on its own, a class on plugin API 2.2 (liminal_libs.sources.archive:
 CryptoVenuePlugin, a crypto exchange's; liminal-libs 1.3.0: what it declares class attributes, what
 it does methods), registered under the entry point group `liminal.providers` as `coinbase`. It relies
 on nothing of the app outside the contract (docs/ARCHITECTURE.md in liminal-charts: "Providers are
 plugins"); its version is this distribution's (pyproject.toml), so PLUGIN.version is left empty.
+
+Plugin API 2.2 (liminal-libs 1.49.0; the user, 2026-11-11: "each plugin should reflect the the API its attached to, and
+present links that provide documentation"): `apis`, the two things it talks to (apis.py: Coinbase Exchange's REST API
+and its WebSocket feed, with Coinbase's pages, every part of each and the calls it makes among the rest), and
+`api_facts()`, what its client and its stream learned while they ran (facts.py), asking nothing.
 """
 from __future__ import annotations
 
@@ -21,6 +26,9 @@ from liminal_libs.sources.archive import CRYPTO_PAIRS, EXCHANGE_FRAMES, Archive 
 from liminal_libs.sources.archive import CryptoVenuePlugin
 from liminal_libs.sources.base import Page
 from liminal_libs.sources.stream import Live, ns, trade
+
+from .apis import APIS, FEED_NAME, REST_NAME
+from .facts import NOTES, stream_words
 
 BASE_URL = "https://api.exchange.coinbase.com"
 # Its plan and caps (once the app's config.PUBLIC_FEEDS["coinbase"]): all the history it holds, unless
@@ -95,6 +103,10 @@ class CoinbaseStream:
     authed: bool = True  # nothing to authenticate: symbols can change as soon as it is connected
     confirmed: frozenset = frozenset()  # the pairs the server says it streams (dynamic)
 
+    def __post_init__(self) -> None:
+        """Noted under the feed's API (held weakly: api_facts says the pairs the server confirmed)."""
+        NOTES.note(FEED_NAME, self, stream_words, began="Stream opened", states=("open", "closed"))
+
     def subscribe(self, coins) -> list[str]:
         self.confirmed = frozenset()
         return [json.dumps({"type": "subscribe", "product_ids": [f"{c}-USD" for c in coins],
@@ -128,7 +140,7 @@ class CoinbasePlugin(CryptoVenuePlugin):
     CRYPTO_VENUE_DAYS limits it): what it declares as attributes, what it does as methods (the window
     its limiter keeps, the pairs it carries); the contract's defaults for the rest."""
 
-    api = "2.0"  # the contract it is written for (the class contract); its version: the distribution's
+    api = "2.2"  # the contract it is written for (2.2: what it attaches to, `apis`); its version: the distribution's
     name = "coinbase"
     title = "Coinbase"
     about = "crypto minute and day bars from 2015 (no key); live trades"
@@ -145,6 +157,21 @@ class CoinbasePlugin(CryptoVenuePlugin):
     live = (Live("coinbase", "crypto", stream=CoinbaseStream),)
     # when its data is published (the library's freshness row for its plan): each minute once it closes
     delays = {"coinbase-public": {"crypto": Delay("delay")}}
+    # what it attaches to (plugin API 2.2): Coinbase Exchange's REST API and its WebSocket feed (apis.py)
+    apis = APIS
+
+    def build(self, settings, request_budget):
+        """The public feed's own build (PublicFeedPlugin.build), its client noted under the REST API (held
+        weakly: api_facts reads what it learned)."""
+        source = super().build(settings, request_budget)
+        NOTES.note(REST_NAME, source.client)
+        return source
+
+    def api_facts(self):
+        """What its client learned of the REST API (the requests made, the last answer's clock, the rate-limit
+        headers its server sent) and the pairs its stream's server confirmed, from what this process already
+        holds: nothing is asked (facts.py)."""
+        return NOTES.facts(a.name for a in self.apis)
 
     def rate(self, settings):
         return (8, 1.0)  # 10 a second per address: a minute's window let 300 go in a burst

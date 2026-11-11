@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.0 (2026-11-11)
+
+Its APIs on its page (plugin API 2.2, liminal-libs 1.49.0; the user: "each plugin should reflect the the API its attached
+to, and present links that provide documentation, the plugin interface should more or less contain what it already has,
+BUT, it should also expose more of what the API is about"). `CoinbasePlugin.apis` declares the two things it talks to,
+read from Coinbase's own pages on 2026-11-11 (`apis.py`):
+
+- **Coinbase Exchange's REST API** (api.exchange.coinbase.com): its documentation, reference, quickstart,
+  authentication, rate limits, status page, changelogs, sandbox, SDKs, the API keys page and the Market Data Terms of
+  Use; its reference's sixteen groups with the requests and the FIX API (eighteen parts), each said used or not; the
+  one call it makes (`GET /products/{product_id}/candles`) among 29 others, the ones that change something or cost
+  (orders, conversions, withdrawals) said so;
+- **its WebSocket feed** (ws-feed.exchange.coinbase.com): its overview, channels, limits, authentication, best
+  practices and errors; its channels in eleven parts; what it sends (`subscribe` to matches and heartbeat,
+  `unsubscribe`) beside the other channels' subscriptions.
+
+`api_facts()` says what its client and its stream learned while they ran, asking nothing: the requests made, the last
+answer's clock, the rate-limit headers its server sent, the pairs the stream's server confirmed (`facts.py`: each held
+weakly, its last words kept when it goes; its build now notes the client it makes, the stream notes itself). Tests: the
+contract at 2.2, the cards' calls the ones its source and its stream send, the facts, and every page it names answering
+(only with `LIMINAL_VENDOR_PAGES=1`). On liminal-libs 1.49.0 or later; every behaviour, limit and string as in 0.2.0.
+
 ## 0.2.0 (2026-11-03)
 
 Renamed `plugin-integrator-coinbase` (the package `plugin_integrator_coinbase`; it was `liminal-plugin-coinbase`) on 2026-11-03: the naming by system (plugins are `plugin-<app>-<name>`), on liminal-libs 1.4.0 (`liminal_libs`, the library renamed with it).
